@@ -201,12 +201,12 @@ class UniversalBlePlugin : UniversalBlePlatformChannel, BluetoothGattCallback(),
         val gatt = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             remoteDevice.connectGatt(
                 context,
-                false,
+                true,
                 this,
                 BluetoothDevice.TRANSPORT_LE
             )
         } else {
-            remoteDevice.connectGatt(context, false, this)
+            remoteDevice.connectGatt(context, true, this)
         }
         gatt.saveCacheIfNeeded()
     }
