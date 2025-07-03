@@ -321,6 +321,20 @@ private class BleCentralDarwin: NSObject, UniversalBlePlatformChannel, CBCentral
     }))
   }
 
+  func getKnownDevices(withIdentifiers: [String], completion: @escaping (Result<[UniversalBleScanResult], Error>) -> Void) {
+    let identifiers = withIdentifiers.compactMap { UUID(uuidString: $0) }
+    let peripherals = manager.retrievePeripherals(withIdentifiers: identifiers)
+    peripherals.forEach { $0.saveCache() }
+    completion(Result.success(peripherals.map { peripheral in
+      let id = peripheral.uuid.uuidString
+      let name = advertisementNameCache[id] ?? discoveredPeripherals[id]?.name ?? peripheral.name ?? ""
+      return UniversalBleScanResult(
+        deviceId: id,
+        name: name
+      )
+    }))
+  }
+
   func centralManagerDidUpdateState(_ central: CBCentralManager) {
     let state = central.state.toAvailabilityState().rawValue
     callbackChannel.onAvailabilityChanged(state: state) { _ in }

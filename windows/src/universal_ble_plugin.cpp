@@ -527,6 +527,14 @@ namespace universal_ble
     GetSystemDevicesAsync(with_services_str, result);
   }
 
+  void UniversalBlePlugin::GetKnownDevices(
+      const flutter::EncodableList &with_identifiers,
+      std::function<void(ErrorOr<flutter::EncodableList> reply)> result)
+  {
+    auto results = flutter::EncodableList();
+    result(results);
+  }
+
   /// Helper Methods
 
   fire_and_forget UniversalBlePlugin::InitializeAsync()

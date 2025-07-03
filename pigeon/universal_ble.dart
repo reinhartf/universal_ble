@@ -81,6 +81,11 @@ abstract class UniversalBlePlatformChannel {
     List<String> withServices,
   );
 
+  @async
+  List<UniversalBleScanResult> getKnownDevices(
+    List<String> withIdentifiers,
+  );
+
   int getConnectionState(String deviceId);
 }
 

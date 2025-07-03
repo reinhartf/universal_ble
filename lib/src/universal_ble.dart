@@ -345,6 +345,19 @@ class UniversalBle {
     );
   }
 
+  /// Get devices known to the system (connected by any app).
+  /// Use [withIdentifiers] to filter devices by device id.
+  /// On `Apple`, [withIdentifiers] is required to get any known devices.
+  /// On `Android`, [withIdentifiers] is not used, can be left empty [].
+  /// Not supported on `Web`, `Linux`, `Windows`, returns [].
+  static Future<List<BleDevice>> getKnownDevices(
+    List<String> withIdentifiers,
+  ) async {
+    return await _bleCommandQueue.queueCommand(
+      () => _platform.getKnownDevices(withIdentifiers),
+    );
+  }
+
   /// Returns connection state of the device.
   /// All platforms will return `Connected/Disconnected` states.
   /// `Android` and `Apple` can also return `Connecting/Disconnecting` states.

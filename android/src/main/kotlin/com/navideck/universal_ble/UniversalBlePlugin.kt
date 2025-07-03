@@ -143,7 +143,7 @@ class UniversalBlePlugin : UniversalBlePlatformChannel, BluetoothGattCallback(),
         }
         val settings = builder.build()
 
-        val usesCustomFilters = filter?.usesCustomFilters() ?: false;
+        val usesCustomFilters = filter?.usesCustomFilters() ?: false
 
         try {
             val filterServices = filter?.withServices?.filterNotNull()?.toUUIDList() ?: emptyList()
@@ -638,6 +638,26 @@ class UniversalBlePlugin : UniversalBlePlatformChannel, BluetoothGattCallback(),
         )
     }
 
+    override fun getKnownDevices(
+        withIdentifiers: List<String>,
+        callback: (Result<List<UniversalBleScanResult>>) -> Unit,
+    ) {
+        val devices: List<BluetoothDevice> = bluetoothManager.adapter.bondedDevices.toList()
+        callback(
+            Result.success(
+                devices.map {
+                    UniversalBleScanResult(
+                        name = it.name,
+                        deviceId = it.address,
+                        isPaired = it.bondState == BOND_BONDED,
+                        manufacturerDataList = null,
+                        rssi = null,
+                    )
+                }
+            )
+        )
+    }
+
     private fun filterDevicesByServices(
         devices: List<BluetoothDevice>,
         withServices: List<String>,
@@ -830,7 +850,7 @@ class UniversalBlePlugin : UniversalBlePlatformChannel, BluetoothGattCallback(),
                         Log.v(TAG, "${device.address} BOND_BONDING")
                     }
 
-                    BluetoothDevice.BOND_BONDED -> {
+                    BOND_BONDED -> {
                         onBondStateUpdate(device.address, true)
                     }
 
@@ -944,7 +964,7 @@ class UniversalBlePlugin : UniversalBlePlatformChannel, BluetoothGattCallback(),
         if (descriptor?.uuid.toString() == ccdCharacteristic.toString()) {
             val char: String? = descriptor?.characteristic?.uuid?.toString()
             val service: String? = descriptor?.characteristic?.service?.uuid?.toString()
-            val deviceId: String? = gatt?.device?.address;
+            val deviceId: String? = gatt?.device?.address
             if (deviceId != null && char != null && service != null) {
                 updateSubscriptionState(deviceId, char, service, status)
             }

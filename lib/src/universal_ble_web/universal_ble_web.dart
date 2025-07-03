@@ -258,6 +258,13 @@ class UniversalBleWeb extends UniversalBlePlatform {
     throw UnimplementedError();
   }
 
+  @override
+  Future<List<BleDevice>> getKnownDevices(
+    List<String> withIdentifiers,
+  ) {
+    throw UnimplementedError();
+  }
+
   /// Helpers
   void _setupListeners() {
     FlutterWebBluetooth.instance.isAvailable.listen(

@@ -381,6 +381,13 @@ class UniversalBleLinux extends UniversalBlePlatform {
         .toList();
   }
 
+  @override
+  Future<List<BleDevice>> getKnownDevices(
+    List<String> withIdentifiers,
+  ) async {
+    return [];
+  }
+
   AvailabilityState get _availabilityState {
     return _activeAdapter?.powered == true
         ? AvailabilityState.poweredOn

@@ -133,6 +133,16 @@ class UniversalBlePigeonChannel extends UniversalBlePlatform {
     );
   }
 
+  @override
+  Future<List<BleDevice>> getKnownDevices(
+    List<String> withIdentifiers,
+  ) async {
+    var devices = await _channel.getKnownDevices(withIdentifiers);
+    return List<BleDevice>.from(
+      devices.map((e) => e.toBleDevice(isSystemDevice: true)).toList(),
+    );
+  }
+
   /// To set listeners
   void _setupListeners() {
     UniversalBleCallbackChannel.setUp(_UniversalBleCallbackHandler(

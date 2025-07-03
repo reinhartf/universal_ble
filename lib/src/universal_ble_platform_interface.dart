@@ -80,6 +80,10 @@ abstract class UniversalBlePlatform {
     List<String>? withServices,
   );
 
+  Future<List<BleDevice>> getKnownDevices(
+    List<String> withIdentifiers,
+  );
+
   bool receivesAdvertisements(String deviceId) => true;
 
   /// Streams
