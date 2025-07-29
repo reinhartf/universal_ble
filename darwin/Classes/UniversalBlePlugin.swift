@@ -7,6 +7,9 @@ import CoreBluetooth
   import Cocoa
   import FlutterMacOS
 #endif
+import os
+
+let log = OSLog(subsystem: "com.lifeq.companion.ios", category: "UniversalBLE")
 
 public class UniversalBlePlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
@@ -383,6 +386,7 @@ private class BleCentralDarwin: NSObject, UniversalBlePlatformChannel, CBCentral
   }
 
   public func centralManager(_: CBCentralManager, didConnect peripheral: CBPeripheral) {
+    os_log("[com.lifeq.companion][universal_ble] didConnect")
     callbackChannel.onConnectionChanged(deviceId: peripheral.uuid.uuidString, connected: true, error: nil) { _ in }
   }
 
@@ -397,10 +401,11 @@ private class BleCentralDarwin: NSObject, UniversalBlePlatformChannel, CBCentral
   }
 
   public func centralManager(_ central: CBCentralManager, willRestoreState dict: [String: Any]) {
+    os_log("[com.lifeq.companion][universal_ble] WillRestoreState")
     if let peripherals = dict[CBCentralManagerRestoredStatePeripheralsKey] as? [CBPeripheral] {
       for peripheral in peripherals {
         peripheral.delegate = self
-        central.connect(peripheral)
+        // central.connect(peripheral)
       }
     }
   }
