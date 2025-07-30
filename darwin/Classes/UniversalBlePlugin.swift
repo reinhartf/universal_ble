@@ -7,9 +7,6 @@ import CoreBluetooth
   import Cocoa
   import FlutterMacOS
 #endif
-import os
-
-let log = OSLog(subsystem: "com.lifeq.companion.ios", category: "UniversalBLE")
 
 public class UniversalBlePlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
@@ -22,6 +19,10 @@ public class UniversalBlePlugin: NSObject, FlutterPlugin {
     let callbackChannel = UniversalBleCallbackChannel(binaryMessenger: messenger)
     let api = BleCentralDarwin(callbackChannel: callbackChannel)
     UniversalBlePlatformChannelSetup.setUp(binaryMessenger: messenger, api: api)
+
+    let channel = FlutterEventChannel(name: "com.lifeq.companion/universal_ble_to_flutter_logs", binaryMessenger: messenger)
+    
+    channel.setStreamHandler(LogToFlutterStreamHandler())
   }
 }
 
@@ -386,7 +387,7 @@ private class BleCentralDarwin: NSObject, UniversalBlePlatformChannel, CBCentral
   }
 
   public func centralManager(_: CBCentralManager, didConnect peripheral: CBPeripheral) {
-    os_log("[com.lifeq.companion][universal_ble] didConnect")
+    LogToFlutter.shared.log("[universal_ble] didConnect")
     callbackChannel.onConnectionChanged(deviceId: peripheral.uuid.uuidString, connected: true, error: nil) { _ in }
   }
 
@@ -401,11 +402,11 @@ private class BleCentralDarwin: NSObject, UniversalBlePlatformChannel, CBCentral
   }
 
   public func centralManager(_ central: CBCentralManager, willRestoreState dict: [String: Any]) {
-    os_log("[com.lifeq.companion][universal_ble] WillRestoreState")
+    LogToFlutter.shared.log("[universal_ble] willRestoreState")
     if let peripherals = dict[CBCentralManagerRestoredStatePeripheralsKey] as? [CBPeripheral] {
       for peripheral in peripherals {
         peripheral.delegate = self
-        // central.connect(peripheral)
+        central.connect(peripheral)
       }
     }
   }
@@ -485,6 +486,18 @@ private class BleCentralDarwin: NSObject, UniversalBlePlatformChannel, CBCentral
   }
 
   public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
+    if let error = error {
+
+        return
+    }
+
+    guard let data = characteristic.value else {
+
+        return
+    }
+    let byteArray = [UInt8](data)
+    let hexString = byteArray.map { String(format: "%02x", $0) }.joined(separator: " ")
+    LogToFlutter.shared.log("[universal_ble] didUpdateValueFor [\(hexString)]")
     // Update callbackChannel if notifying
     if characteristic.isNotifying {
       if let characteristicValue = characteristic.value {
@@ -552,4 +565,50 @@ extension [String] {
       return CBUUID(string: serviceUUID)
     }
   }
+}
+
+class LogToFlutter {
+    static let shared = LogToFlutter()
+
+    private var sink: FlutterEventSink?
+    private var buffer: [String] = []
+
+    private let dateFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+        return df
+    }()
+
+    func setSink(_ sink: FlutterEventSink?) {
+        self.sink = sink
+
+        // Flush any buffered messages
+        for message in buffer {
+            sink?(message)
+        }
+        buffer.removeAll()
+    }
+
+    func log(_ message: String) {
+        if let sink = sink {
+            sink(message)
+        } else {
+            let timestamp = dateFormatter.string(from: Date())
+            let timestampedMessage = "[\(timestamp)] \(message)"
+            buffer.append(timestampedMessage) // Store for later
+        }
+    }
+}
+
+
+class LogToFlutterStreamHandler: NSObject, FlutterStreamHandler {
+    func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
+        LogToFlutter.shared.setSink(events)
+        return nil
+    }
+
+    func onCancel(withArguments arguments: Any?) -> FlutterError? {
+        LogToFlutter.shared.setSink(nil)
+        return nil
+    }
 }
