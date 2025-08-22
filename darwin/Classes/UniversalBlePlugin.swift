@@ -19,6 +19,10 @@ public class UniversalBlePlugin: NSObject, FlutterPlugin {
     let callbackChannel = UniversalBleCallbackChannel(binaryMessenger: messenger)
     let api = BleCentralDarwin(callbackChannel: callbackChannel)
     UniversalBlePlatformChannelSetup.setUp(binaryMessenger: messenger, api: api)
+
+    let channel = FlutterEventChannel(name: "com.lifeq.companion/universal_ble_to_flutter_logs", binaryMessenger: messenger)
+    
+    channel.setStreamHandler(LogToFlutterStreamHandler())
   }
 }
 
@@ -379,15 +383,18 @@ private class BleCentralDarwin: NSObject, UniversalBlePlatformChannel, CBCentral
   }
 
   public func centralManager(_: CBCentralManager, didConnect peripheral: CBPeripheral) {
+    LogToFlutter.shared.log("didConnect \(peripheral.name)")
     callbackChannel.onConnectionChanged(deviceId: peripheral.uuid.uuidString, connected: true, error: nil) { _ in }
   }
 
   public func centralManager(_: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error _: Error?) {
+    LogToFlutter.shared.log("didDisconnectPeripheral \(peripheral.name)")
     callbackChannel.onConnectionChanged(deviceId: peripheral.uuid.uuidString, connected: false, error: nil) { _ in }
     cleanUpConnection(deviceId: peripheral.uuid.uuidString)
   }
 
   public func centralManager(_: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
+    LogToFlutter.shared.log("didFailToConnect \(peripheral.name)")
     callbackChannel.onConnectionChanged(deviceId: peripheral.uuid.uuidString, connected: false, error: error?.localizedDescription) { _ in }
     cleanUpConnection(deviceId: peripheral.uuid.uuidString)
   }
@@ -534,4 +541,50 @@ extension [String] {
       return CBUUID(string: serviceUUID)
     }
   }
+}
+
+class LogToFlutter {
+    static let shared = LogToFlutter()
+
+    private var sink: FlutterEventSink?
+    private var buffer: [String] = []
+
+    private let dateFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+        return df
+    }()
+
+    func setSink(_ sink: FlutterEventSink?) {
+        self.sink = sink
+
+        // Flush any buffered messages
+        for message in buffer {
+            sink?(message)
+        }
+        buffer.removeAll()
+    }
+
+    func log(_ message: String) {
+        if let sink = sink {
+            sink(message)
+        } else {
+            let timestamp = dateFormatter.string(from: Date())
+            let timestampedMessage = "[\(timestamp)] \(message)"
+            buffer.append(timestampedMessage) // Store for later
+        }
+    }
+}
+
+
+class LogToFlutterStreamHandler: NSObject, FlutterStreamHandler {
+    func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
+        LogToFlutter.shared.setSink(events)
+        return nil
+    }
+
+    func onCancel(withArguments arguments: Any?) -> FlutterError? {
+        LogToFlutter.shared.setSink(nil)
+        return nil
+    }
 }
