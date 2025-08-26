@@ -35,7 +35,11 @@ private var advertisementNameCache = [String: String]()
 private class BleCentralDarwin: NSObject, UniversalBlePlatformChannel, CBCentralManagerDelegate, CBPeripheralDelegate {
   var callbackChannel: UniversalBleCallbackChannel
   private var universalBleFilterUtil = UniversalBleFilterUtil()
-  private lazy var manager: CBCentralManager = .init(delegate: self, queue: nil)
+  private lazy var manager: CBCentralManager = .init(
+    delegate: self,
+    queue: nil,
+    options: [CBCentralManagerOptionRestoreIdentifierKey: "UniversalBleRestoreIdentifier"]
+  )
   private var availabilityStateUpdateHandlers: [(Result<Int64, Error>) -> Void] = []
   private var discoveredServicesProgressMap: [String: [UniversalBleService]] = [:]
   private var characteristicReadFutures = [CharacteristicReadFuture]()
@@ -397,6 +401,16 @@ private class BleCentralDarwin: NSObject, UniversalBlePlatformChannel, CBCentral
     LogToFlutter.shared.log("didFailToConnect \(peripheral.name)")
     callbackChannel.onConnectionChanged(deviceId: peripheral.uuid.uuidString, connected: false, error: error?.localizedDescription) { _ in }
     cleanUpConnection(deviceId: peripheral.uuid.uuidString)
+  }
+
+  public func centralManager(_ central: CBCentralManager, willRestoreState dict: [String: Any]) {
+    if let peripherals = dict[CBCentralManagerRestoredStatePeripheralsKey] as? [CBPeripheral] {
+      for peripheral in peripherals {
+        LogToFlutter.shared.log("willRestoreState \(peripheral.name)")
+        // peripheral.delegate = self
+        // central.connect(peripheral)
+      }
+    }
   }
 
   public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices _: Error?) {
