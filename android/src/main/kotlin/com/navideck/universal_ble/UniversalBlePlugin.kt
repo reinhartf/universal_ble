@@ -16,12 +16,16 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
+import android.companion.CompanionDeviceManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Context.RECEIVER_EXPORTED
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.net.MacAddress
 import android.os.Build
+import android.os.Build.VERSION_CODES
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -49,6 +53,7 @@ class UniversalBlePlugin : UniversalBlePlatformChannel, BluetoothGattCallback(),
     private lateinit var safeScanner: SafeScanner
     private val cachedServicesMap = mutableMapOf<String, List<String>>()
     private val universalBleFilterUtil = UniversalBleFilterUtil()
+    private var companionDeviceManager: CompanionDeviceManager? = null
 
     // Flutter Futures
     private var bluetoothEnableRequestFuture: ((Result<Boolean>) -> Unit)? = null
@@ -76,6 +81,11 @@ class UniversalBlePlugin : UniversalBlePlatformChannel, BluetoothGattCallback(),
             context.registerReceiver(broadcastReceiver, intentFilter)
         }
         cachedServicesMap.putAll(getCachedServicesMap())
+
+        val packageManager = context.packageManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && packageManager.hasSystemFeature(PackageManager.FEATURE_COMPANION_DEVICE_SETUP)) {
+            companionDeviceManager = context.getSystemService(Context.COMPANION_DEVICE_SERVICE) as CompanionDeviceManager
+        }
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -642,6 +652,69 @@ class UniversalBlePlugin : UniversalBlePlatformChannel, BluetoothGattCallback(),
         withIdentifiers: List<String>,
         callback: (Result<List<UniversalBleScanResult>>) -> Unit,
     ) {
+        if (companionDeviceManager != null) {
+            val usedMacAddress = mutableSetOf<MacAddress>();
+            val devices = mutableListOf<UniversalBleScanResult>()
+            if (Build.VERSION.SDK_INT >= VERSION_CODES.TIRAMISU) {
+                val associations = companionDeviceManager!!.myAssociations
+
+                if (associations.isNotEmpty()) {
+                    for (association in associations) {
+                        val macAddress: MacAddress? = association.deviceMacAddress
+
+                        if (macAddress == null) {
+                            Log.w(TAG, "Skipping association with NULL MAC")
+                            continue
+                        }
+
+                        if (usedMacAddress.contains(macAddress)) {
+                            continue
+                        }
+                        usedMacAddress.add(macAddress)
+
+                        val macAddressString = macAddress.toString().uppercase()
+                        if (!macAddressString.matches("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$".toRegex())) {
+                            Log.w(TAG, "Skipping invalid MAC format: $macAddress")
+                            continue
+                        }
+
+                        val device = bluetoothManager.adapter.getRemoteDevice(macAddressString)
+                        devices.add(
+                            UniversalBleScanResult(
+                                name = device!!.name,
+                                deviceId = device!!.address,
+                                isPaired = device!!.bondState == BOND_BONDED,
+                                manufacturerDataList = null,
+                                rssi = null,
+                            )
+                        )
+                    }
+                }
+            } else if (Build.VERSION.SDK_INT >= VERSION_CODES.O) {
+                val associations = companionDeviceManager!!.associations
+
+                if (associations.isNotEmpty()) {                    
+                    for (macAddress in associations) {
+                        val device = bluetoothManager.adapter.getRemoteDevice(macAddress)
+                        devices.add(
+                            UniversalBleScanResult(
+                                name = device.name,
+                                deviceId = device.address,
+                                isPaired = device.bondState == BOND_BONDED,
+                                manufacturerDataList = null,
+                                rssi = null,
+                            )
+                        )
+                    }
+                }
+            }
+
+            if (devices.isNotEmpty()) {
+                callback(Result.success(devices))
+                return
+            }
+            Log.w(TAG, "no CDM associated devices found")
+        }
         val devices: List<BluetoothDevice> = bluetoothManager.adapter.bondedDevices.toList()
         callback(
             Result.success(
