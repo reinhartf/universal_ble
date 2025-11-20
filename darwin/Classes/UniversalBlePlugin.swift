@@ -31,7 +31,9 @@ private var advertisementNameCache = [String: String]()
 private class BleCentralDarwin: NSObject, UniversalBlePlatformChannel, CBCentralManagerDelegate, CBPeripheralDelegate {
   var callbackChannel: UniversalBleCallbackChannel
   private var universalBleFilterUtil = UniversalBleFilterUtil()
-  private lazy var manager: CBCentralManager = .init(delegate: self, queue: nil)
+  private lazy var manager: CBCentralManager = .init(delegate: self, queue: nil, options: [
+      CBCentralManagerOptionRestoreIdentifierKey: "UniversalBleStateRestoration"
+  ])
   private var availabilityStateUpdateHandlers: [(Result<Int64, Error>) -> Void] = []
   private var discoveredServicesProgressMap: [String: [UniversalBleService]] = [:]
   private var characteristicReadFutures = [CharacteristicReadFuture]()
@@ -390,6 +392,10 @@ private class BleCentralDarwin: NSObject, UniversalBlePlatformChannel, CBCentral
   public func centralManager(_: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
     callbackChannel.onConnectionChanged(deviceId: peripheral.uuid.uuidString, connected: false, error: error?.localizedDescription) { _ in }
     cleanUpConnection(deviceId: peripheral.uuid.uuidString)
+  }
+
+  func centralManager(_ central: CBCentralManager, willRestoreState dict: [String : Any]) {
+    print("[UniversalBLE] Restored state: \(dict)")
   }
 
   public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices _: Error?) {
