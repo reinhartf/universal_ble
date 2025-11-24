@@ -7,6 +7,7 @@ import CoreBluetooth
   import Cocoa
   import FlutterMacOS
 #endif
+import os
 
 public class UniversalBlePlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
@@ -32,8 +33,8 @@ private class BleCentralDarwin: NSObject, UniversalBlePlatformChannel, CBCentral
   var callbackChannel: UniversalBleCallbackChannel
   private var universalBleFilterUtil = UniversalBleFilterUtil()
   private lazy var manager: CBCentralManager = .init(delegate: self, queue: nil, options: [
-      CBCentralManagerOptionRestoreIdentifierKey: "UniversalBleStateRestoration"
-  ])
+        CBCentralManagerOptionRestoreIdentifierKey: "UniversalBleRestore"
+    ] )
   private var availabilityStateUpdateHandlers: [(Result<Int64, Error>) -> Void] = []
   private var discoveredServicesProgressMap: [String: [UniversalBleService]] = [:]
   private var characteristicReadFutures = [CharacteristicReadFuture]()
@@ -41,9 +42,16 @@ private class BleCentralDarwin: NSObject, UniversalBlePlatformChannel, CBCentral
   private var characteristicWriteWithoutResponseFutures = [CharacteristicWriteFuture]()
   private var characteristicNotifyFutures = [CharacteristicNotifyFuture]()
   private var discoverServicesFutures = [DiscoverServicesFuture]()
+  private var universalBlePluginExtension: UniversalBlePluginExtention
+  private var activePeripheral: CBPeripheral?
 
   init(callbackChannel: UniversalBleCallbackChannel) {
     self.callbackChannel = callbackChannel
+    if #available(iOS 18.0, *) {
+      universalBlePluginExtension = UniversalBlePluginExtASK()
+    } else {
+      universalBlePluginExtension = UniversalBlePluginExtNoASK()
+    }
     super.init()
   }
 
@@ -92,6 +100,7 @@ private class BleCentralDarwin: NSObject, UniversalBlePlatformChannel, CBCentral
 
   func connect(deviceId: String) throws {
     let peripheral = try deviceId.getPeripheral(manager: manager)
+    activePeripheral = peripheral 
     peripheral.delegate = self
     manager.connect(peripheral)
   }
@@ -101,6 +110,7 @@ private class BleCentralDarwin: NSObject, UniversalBlePlatformChannel, CBCentral
     if peripheral.state != CBPeripheralState.disconnected {
       manager.cancelPeripheralConnection(peripheral)
     }
+    activePeripheral = nil
     cleanUpConnection(deviceId: deviceId)
   }
 
@@ -320,6 +330,23 @@ private class BleCentralDarwin: NSObject, UniversalBlePlatformChannel, CBCentral
   }
 
   func getKnownDevices(withIdentifiers: [String], completion: @escaping (Result<[UniversalBleScanResult], Error>) -> Void) {
+    universalBlePluginExtension.getKnownDevices(withIdentifiers: withIdentifiers) { result in
+      switch result {
+        case .success(let res):
+          if (res.count > 0) {
+            completion(.success(res))
+          } else {
+            self.retrievePeripherals(withIdentifiers: withIdentifiers, completion: completion)    
+          }
+          break
+        case .failure(let error):
+          completion(.failure(error))
+          break
+      }
+    }
+  }
+
+  private func retrievePeripherals(withIdentifiers: [String], completion: @escaping (Result<[UniversalBleScanResult], Error>) -> Void) {
     let identifiers = withIdentifiers.compactMap { UUID(uuidString: $0) }
     let peripherals = manager.retrievePeripherals(withIdentifiers: identifiers)
     peripherals.forEach { $0.saveCache() }
@@ -382,6 +409,7 @@ private class BleCentralDarwin: NSObject, UniversalBlePlatformChannel, CBCentral
 
   public func centralManager(_: CBCentralManager, didConnect peripheral: CBPeripheral) {
     callbackChannel.onConnectionChanged(deviceId: peripheral.uuid.uuidString, connected: true, error: nil) { _ in }
+    universalBlePluginExtension.invalidate()
   }
 
   public func centralManager(_: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error _: Error?) {
@@ -394,7 +422,8 @@ private class BleCentralDarwin: NSObject, UniversalBlePlatformChannel, CBCentral
     cleanUpConnection(deviceId: peripheral.uuid.uuidString)
   }
 
-  func centralManager(_ central: CBCentralManager, willRestoreState dict: [String : Any]) {
+  func centralManager(_ central: CBCentralManager,
+                    willRestoreState dict: [String : Any]) {
     print("[UniversalBLE] Restored state: \(dict)")
   }
 
