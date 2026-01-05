@@ -34,7 +34,7 @@ class UniversalBlePluginExtASK: UniversalBlePluginExtention {
                     completion(Result.success(accessories.map { accessory in
                     return UniversalBleScanResult(
                         deviceId: accessory.bluetoothIdentifier!.uuidString,
-                        name: accessory.displayName,
+                        name: accessory.displayName
                     )
                     }))
                 } else {
