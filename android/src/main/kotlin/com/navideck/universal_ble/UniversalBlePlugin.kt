@@ -1028,18 +1028,50 @@ class UniversalBlePlugin : UniversalBlePlatformChannel, BluetoothGattCallback(),
         }
     }
 
+    var retryCount: Int = 0
     override fun onDescriptorWrite(
         gatt: BluetoothGatt?,
         descriptor: BluetoothGattDescriptor?,
         status: Int,
     ) {
         super.onDescriptorWrite(gatt, descriptor, status)
-        if (descriptor?.uuid.toString() == ccdCharacteristic.toString()) {
-            val char: String? = descriptor?.characteristic?.uuid?.toString()
-            val service: String? = descriptor?.characteristic?.service?.uuid?.toString()
-            val deviceId: String? = gatt?.device?.address
-            if (deviceId != null && char != null && service != null) {
-                updateSubscriptionState(deviceId, char, service, status)
+        when (status) {
+            BluetoothGatt.GATT_SUCCESS -> {
+                Log.d(TAG, "Descriptor write success")
+                retryCount = 0
+                if (descriptor?.uuid.toString() == ccdCharacteristic.toString()) {
+                    val char: String? = descriptor?.characteristic?.uuid?.toString()
+                    val service: String? = descriptor?.characteristic?.service?.uuid?.toString()
+                    val deviceId: String? = gatt?.device?.address
+                    if (deviceId != null && char != null && service != null) {
+                        updateSubscriptionState(deviceId, char, service, status)
+                    }
+                }
+                // Encryption is guaranteed at this point
+            }
+            BluetoothGatt.GATT_INSUFFICIENT_AUTHENTICATION,
+            BluetoothGatt.GATT_INSUFFICIENT_ENCRYPTION -> {
+                Log.d(TAG, "Descriptor write failed, insufficient authentication or encryption")
+                retryCount++
+                if (retryCount >= 5) {
+                    Log.d(TAG, "Descriptor retry failed")
+                    retryCount = 0
+                    if (descriptor?.uuid.toString() == ccdCharacteristic.toString()) {
+                        val char: String? = descriptor?.characteristic?.uuid?.toString()
+                        val service: String? = descriptor?.characteristic?.service?.uuid?.toString()
+                        val deviceId: String? = gatt?.device?.address
+                        if (deviceId != null && char != null && service != null) {
+                            updateSubscriptionState(deviceId, char, service, status)
+                        }
+                    }
+                } else {
+                    Log.d(TAG, "Retrying writing descriptor")
+                    if (gatt != null) {
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            gatt.writeDescriptor(descriptor)
+                        }, 300)
+                    }
+                }
             }
         }
     }
