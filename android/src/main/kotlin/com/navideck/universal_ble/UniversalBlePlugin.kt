@@ -196,12 +196,11 @@ class UniversalBlePlugin : UniversalBlePlatformChannel, BluetoothGattCallback(),
         deviceId.findGatt()?.let {
             val currentState = bluetoothManager.getConnectionState(it.device, BluetoothProfile.GATT)
             if (currentState == BluetoothGatt.STATE_CONNECTED) {
-                Log.e(TAG, "$deviceId Already connected, disconnecting")
-                disconnect(deviceId)
+                Log.e(TAG, "$deviceId Already connected")
                 // mainThreadHandler?.post {
                 //     callbackChannel?.onConnectionChanged(deviceId, true, null) {}
                 // }
-                return
+                // return
             } else if (currentState == BluetoothGatt.STATE_CONNECTING) {
                 throw FlutterError("Connecting", "Connection already in progress", null)
             }
