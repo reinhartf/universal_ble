@@ -332,6 +332,13 @@ class UniversalBle {
     );
   }
 
+  static Future<void> clearGattCache(String deviceId) async {
+    return await _bleCommandQueue.queueCommand(
+        () => _platform.clearGattCache(deviceId),
+        deviceId: deviceId,
+      );
+  }
+
   /// Get connected devices to the system (connected by any app).
   /// Use [withServices] to filter devices by services.
   /// On `Apple`, [withServices] is required to get any connected devices. If not passed, several [18XX] generic services will be set by default.

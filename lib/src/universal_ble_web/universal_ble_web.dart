@@ -252,6 +252,11 @@ class UniversalBleWeb extends UniversalBlePlatform {
   }
 
   @override
+  Future<void> clearGattCache(String deviceId) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<List<BleDevice>> getSystemDevices(
     List<String>? withServices,
   ) {

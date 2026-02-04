@@ -351,6 +351,11 @@ class UniversalBleLinux extends UniversalBlePlatform {
   }
 
   @override
+  Future<void> clearGattCache(String deviceId) async {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<bool> isPaired(String deviceId) async {
     return _findDeviceById(deviceId).paired;
   }

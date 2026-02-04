@@ -124,6 +124,9 @@ class UniversalBlePigeonChannel extends UniversalBlePlatform {
   Future<void> unpair(String deviceId) => _channel.unPair(deviceId);
 
   @override
+  Future<void> clearGattCache(String deviceId) => _channel.clearGattCache(deviceId);
+
+  @override
   Future<List<BleDevice>> getSystemDevices(
     List<String>? withServices,
   ) async {

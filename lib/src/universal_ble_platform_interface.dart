@@ -74,6 +74,8 @@ abstract class UniversalBlePlatform {
 
   Future<void> unpair(String deviceId);
 
+  Future<void> clearGattCache(String deviceId);
+
   Future<BleConnectionState> getConnectionState(String deviceId);
 
   Future<List<BleDevice>> getSystemDevices(
