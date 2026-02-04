@@ -38,6 +38,8 @@ abstract class UniversalBlePlatformChannel {
 
   void disconnect(String deviceId);
 
+  void clearGattCache(String deviceId);
+
   @async
   void setNotifiable(
     String deviceId,

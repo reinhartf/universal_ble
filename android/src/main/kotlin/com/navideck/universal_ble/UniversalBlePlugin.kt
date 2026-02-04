@@ -197,10 +197,10 @@ class UniversalBlePlugin : UniversalBlePlatformChannel, BluetoothGattCallback(),
             val currentState = bluetoothManager.getConnectionState(it.device, BluetoothProfile.GATT)
             if (currentState == BluetoothGatt.STATE_CONNECTED) {
                 Log.e(TAG, "$deviceId Already connected")
-                // mainThreadHandler?.post {
-                //     callbackChannel?.onConnectionChanged(deviceId, true, null) {}
-                // }
-                // return
+                mainThreadHandler?.post {
+                    callbackChannel?.onConnectionChanged(deviceId, true, null) {}
+                }
+                return
             } else if (currentState == BluetoothGatt.STATE_CONNECTING) {
                 throw FlutterError("Connecting", "Connection already in progress", null)
             }
@@ -219,6 +219,19 @@ class UniversalBlePlugin : UniversalBlePlatformChannel, BluetoothGattCallback(),
             remoteDevice.connectGatt(context, true, this)
         }
         gatt.saveCacheIfNeeded()
+    }
+
+    override fun clearGattCache(deviceId: String) {
+        deviceId.findGatt()?.let { gatt ->
+            try {
+                val refreshMethod = gatt.javaClass.getMethod("refresh")
+                if (refreshMethod != null) {
+                    refreshMethod.invoke(gatt)
+                }
+            } catch (e: Exception) {
+                throw FlutterError("ClearGattCache", "clear gatt cache error", e)
+            }
+        }
     }
 
     override fun disconnect(deviceId: String) {

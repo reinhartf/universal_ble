@@ -447,6 +447,28 @@ class UniversalBlePlatformChannel {
     }
   }
 
+  Future<void> clearGattCache(String deviceId) async {
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.universal_ble.UniversalBlePlatformChannel.clearGattCache$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final List<Object?>? pigeonVar_replyList =
+        await pigeonVar_channel.send(<Object?>[deviceId]) as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else {
+      return;
+    }
+  }
+
   Future<void> setNotifiable(String deviceId, String service, String characteristic, int bleInputProperty) async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.universal_ble.UniversalBlePlatformChannel.setNotifiable$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(

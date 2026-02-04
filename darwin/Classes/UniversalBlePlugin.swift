@@ -300,6 +300,10 @@ private class BleCentralDarwin: NSObject, UniversalBlePlatformChannel, CBCentral
     completion(Result.failure(PigeonError(code: "NotSupported", message: nil, details: nil)))
   }
 
+  func clearGattCache(deviceId _: String) throws {
+    throw PigeonError(code: "NotSupported", message: nil, details: nil)
+  }
+
   func pair(deviceId _: String, completion: @escaping (Result<Bool, Error>) -> Void) {
     completion(Result.failure(PigeonError(code: "Implemented in Dart", message: nil, details: nil)))
   }

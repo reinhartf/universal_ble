@@ -277,6 +277,7 @@ interface UniversalBlePlatformChannel {
   fun stopScan()
   fun connect(deviceId: String)
   fun disconnect(deviceId: String)
+  fun clearGattCache(deviceId: String)
   fun setNotifiable(deviceId: String, service: String, characteristic: String, bleInputProperty: Long, callback: (Result<Unit>) -> Unit)
   fun discoverServices(deviceId: String, callback: (Result<List<UniversalBleService>>) -> Unit)
   fun readValue(deviceId: String, service: String, characteristic: String, callback: (Result<ByteArray>) -> Unit)
@@ -412,6 +413,24 @@ interface UniversalBlePlatformChannel {
             val deviceIdArg = args[0] as String
             val wrapped: List<Any?> = try {
               api.disconnect(deviceIdArg)
+              listOf(null)
+            } catch (exception: Throwable) {
+              wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.universal_ble.UniversalBlePlatformChannel.clearGattCache$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val deviceIdArg = args[0] as String
+            val wrapped: List<Any?> = try {
+              api.clearGattCache(deviceIdArg)
               listOf(null)
             } catch (exception: Throwable) {
               wrapError(exception)

@@ -311,6 +311,7 @@ protocol UniversalBlePlatformChannel {
   func stopScan() throws
   func connect(deviceId: String) throws
   func disconnect(deviceId: String) throws
+  func clearGattCache(deviceId: String) throws
   func setNotifiable(deviceId: String, service: String, characteristic: String, bleInputProperty: Int64, completion: @escaping (Result<Void, Error>) -> Void)
   func discoverServices(deviceId: String, completion: @escaping (Result<[UniversalBleService], Error>) -> Void)
   func readValue(deviceId: String, service: String, characteristic: String, completion: @escaping (Result<FlutterStandardTypedData, Error>) -> Void)
@@ -432,6 +433,21 @@ class UniversalBlePlatformChannelSetup {
       }
     } else {
       disconnectChannel.setMessageHandler(nil)
+    }
+    let clearGattCacheChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.universal_ble.UniversalBlePlatformChannel.clearGattCache\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      clearGattCacheChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let deviceIdArg = args[0] as! String
+        do {
+          try api.clearGattCache(deviceId: deviceIdArg)
+          reply(wrapResult(nil))
+        } catch {
+          reply(wrapError(error))
+        }
+      }
+    } else {
+      clearGattCacheChannel.setMessageHandler(nil)
     }
     let setNotifiableChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.universal_ble.UniversalBlePlatformChannel.setNotifiable\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
